@@ -22,10 +22,7 @@ import CustomBinsModal from 'pages/studyView/charts/barChart/CustomBinsModal';
 import { StudyViewPageStore } from 'pages/studyView/StudyViewPageStore';
 import { ISurvivalDescription } from 'pages/resultsView/survival/SurvivalDescriptionTable';
 import ComparisonVsIcon from 'shared/components/ComparisonVsIcon';
-import {
-    getHugoGeneSymbols,
-    getComparisonParamsForTable,
-} from 'pages/studyView/StudyViewComparisonUtils';
+import { getComparisonParamsForTable } from 'pages/studyView/StudyViewComparisonUtils';
 
 export interface IChartHeaderProps {
     chartMeta: ChartMeta;

@@ -31,7 +31,6 @@ import {
     getWidthByDimension,
     mutationCountVsCnaTooltip,
     MutationCountVsCnaYBinsMin,
-    SpecialChartsUniqueKeyEnum,
     NumericalGroupComparisonType,
 } from '../StudyViewUtils';
 import { GenePanel } from 'cbioportal-ts-api-client';
@@ -55,7 +54,6 @@ import {
     MultiSelectionTable,
 } from 'pages/studyView/table/MultiSelectionTable';
 import { FreqColumnTypeEnum } from '../TableUtils';
-import { Dimensions } from 'react-virtualized';
 import {
     SampleTreatmentsTable,
     SampleTreatmentsTableColumnKey,

@@ -2,7 +2,6 @@ import * as _ from 'lodash';
 import AppConfig from 'appConfig';
 import internalClient from 'shared/api/cbioportalInternalClientInstance';
 import defaultClient from 'shared/api/cbioportalClientInstance';
-import client from 'shared/api/cbioportalClientInstance';
 import oncoKBClient from 'shared/api/oncokbClientInstance';
 import {
     action,
@@ -31,26 +30,21 @@ import {
     CopyNumberSeg,
     DataFilterValue,
     DensityPlotBin,
-    Gene,
     GeneFilter,
     GenePanel,
     GenomicDataBin,
     GenomicDataBinFilter,
     GenomicDataFilter,
-    MolecularDataMultipleStudyFilter,
     MolecularProfile,
     MolecularProfileFilter,
-    MutationMultipleStudyFilter,
     NumericGeneMolecularData,
     OredPatientTreatmentFilters,
     OredSampleTreatmentFilters,
     Patient,
-    PatientTreatmentRow,
     ResourceData,
     ResourceDefinition,
     Sample,
     SampleIdentifier,
-    SampleMolecularIdentifier,
     SampleTreatmentRow,
     StudyViewFilter,
 } from 'cbioportal-ts-api-client';
@@ -195,7 +189,6 @@ import { isMixedReferenceGenome } from 'shared/lib/referenceGenomeUtils';
 import { Datalabel } from 'shared/lib/DataUtils';
 import PromisePlus from 'shared/lib/PromisePlus';
 import { getSuffixOfMolecularProfile } from 'shared/lib/molecularProfileUtils';
-import { REQUEST_ARG_ENUM } from 'shared/constants';
 import {
     createAlteredGeneComparisonSession,
     doesChartHaveComparisonGroupsLimit,
@@ -871,7 +864,7 @@ export class StudyViewPageStore {
 
                     const groups = _.map(
                         treatmentsGroupedById,
-                        (treatmentRows, id) => {
+                        treatmentRows => {
                             const selectedSampleIdentifiers = _.flatMap(
                                 treatmentRows,
                                 treatmentRow => {
@@ -2010,14 +2003,14 @@ export class StudyViewPageStore {
 
     @autobind
     @action
-    addGenomicProfilesFilter(chartMeta: ChartMeta, profiles: string[][]) {
+    addGenomicProfilesFilter(profiles: string[][]) {
         let genomicProfilesFilter = toJS(this.genomicProfilesFilter) || [];
         this.setGenomicProfilesFilter(genomicProfilesFilter.concat(profiles));
     }
 
     @autobind
     @action
-    addCaseListsFilter(chartMeta: ChartMeta, caseLists: string[][]) {
+    addCaseListsFilter(caseLists: string[][]) {
         let caseListsFilter = toJS(this.caseListsFilter) || [];
         this.setCaseListsFilter(caseListsFilter.concat(caseLists));
     }
@@ -2624,7 +2617,7 @@ export class StudyViewPageStore {
             }
             return Promise.resolve([]);
         },
-        onError: error => {},
+        onError: () => {},
         onResult: data => {
             data.forEach(item => {
                 const uniqueKey = item.attributeId;
@@ -2657,7 +2650,7 @@ export class StudyViewPageStore {
             return Promise.resolve([]);
         },
         default: [],
-        onError: error => {},
+        onError: () => {},
         onResult: data => {
             data.forEach(item => {
                 const uniqueKey = item.attributeId;
@@ -2685,7 +2678,7 @@ export class StudyViewPageStore {
             return Promise.resolve([]);
         },
         default: [],
-        onError: error => {},
+        onError: () => {},
         onResult: data => {
             _.each(
                 _.groupBy(data, item => item.attributeId),
@@ -2711,7 +2704,7 @@ export class StudyViewPageStore {
             }
             return Promise.resolve([]);
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -2853,7 +2846,7 @@ export class StudyViewPageStore {
                     });
                     return res;
                 },
-                onError: error => {},
+                onError: () => {},
                 default: [],
             });
         }
@@ -2964,7 +2957,7 @@ export class StudyViewPageStore {
                         }) || []
                     );
                 },
-                onError: error => {},
+                onError: () => {},
                 default: [],
             });
         }
@@ -3029,7 +3022,7 @@ export class StudyViewPageStore {
             }
             return [];
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -3094,7 +3087,7 @@ export class StudyViewPageStore {
                         .then(res => {
                             filteredVirtualStudies.push(res);
                         })
-                        .catch(error => {
+                        .catch(() => {
                             /*do nothing*/
                         })
                 )
@@ -3296,7 +3289,7 @@ export class StudyViewPageStore {
                                     studyId: virtualStudy.id,
                                 } as CancerStudy);
                             })
-                            .catch(error => {
+                            .catch(() => {
                                 /*do nothing*/
                             })
                     )
@@ -3322,7 +3315,7 @@ export class StudyViewPageStore {
             );
             return _.filter(this.studyIds, id => !_.includes(validIds, id));
         },
-        onError: error => {},
+        onError: () => {},
         onResult: unknownIds => {
             if (unknownIds.length > 0) {
                 this.pageStatusMessages['unknownIds'] = {
@@ -3345,7 +3338,7 @@ export class StudyViewPageStore {
                 )
             );
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -3361,7 +3354,7 @@ export class StudyViewPageStore {
                 )
             );
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -3375,7 +3368,7 @@ export class StudyViewPageStore {
                 )
             );
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -3518,7 +3511,7 @@ export class StudyViewPageStore {
             return [];
         },
         default: [],
-        onError: error => {},
+        onError: () => {},
         onResult: clinicalAttributes => {
             clinicalAttributes.forEach((obj: ClinicalAttribute) => {
                 if (obj.datatype === DataType.NUMBER) {
@@ -3573,7 +3566,7 @@ export class StudyViewPageStore {
     readonly MDACCHeatmapStudyMeta = remoteData(
         {
             await: () => [this.queriedPhysicalStudyIds],
-            onError: error => {},
+            onError: () => {},
             invoke: async () => {
                 if (AppConfig.serverConfig.show_mdacc_heatmap) {
                     let isSinglePhysicalStudy =
@@ -3597,7 +3590,7 @@ export class StudyViewPageStore {
         invoke: async () => {
             return oncoKBClient.utilsCancerGeneListGetUsingGET_1({});
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -3608,7 +3601,7 @@ export class StudyViewPageStore {
                 cancerGene => cancerGene.oncokbAnnotated
             );
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -4228,7 +4221,7 @@ export class StudyViewPageStore {
 
     // had to create default variables for eachsince the default chart settings
     // depends on the number of columns (browser width)
-    @observable private _defualtChartsDimension = observable.map<
+    @observable private _defaultChartsDimension = observable.map<
         ChartDimension
     >();
     @observable private _defaultChartsType = observable.map<ChartType>();
@@ -4259,7 +4252,7 @@ export class StudyViewPageStore {
                 chartUniqueKey => this.chartMetaSet[chartUniqueKey]
             ),
             this.columns,
-            this._defualtChartsDimension.toJS(),
+            this._defaultChartsDimension.toJS(),
             this._defaultChartsType.toJS(),
             {},
             {},
@@ -4269,9 +4262,9 @@ export class StudyViewPageStore {
 
     @autobind
     @action
-    private loadSettings(chartSettngs: ChartUserSetting[]) {
+    private loadSettings(chartSettings: ChartUserSetting[]) {
         this.clearPageSettings();
-        _.map(chartSettngs, chartUserSettings => {
+        _.map(chartSettings, chartUserSettings => {
             if (
                 chartUserSettings.name &&
                 chartUserSettings.groups &&
@@ -4488,7 +4481,7 @@ export class StudyViewPageStore {
         this.initializeClinicalDataCountCharts();
         this.initializeClinicalDataBinCountCharts();
         this.initializeGeneSpecificCharts();
-        this._defualtChartsDimension = observable.map(
+        this._defaultChartsDimension = observable.map(
             this.chartsDimension.toJS()
         );
         this._defaultChartsType = observable.map(this.chartsType.toJS());
@@ -4676,7 +4669,7 @@ export class StudyViewPageStore {
             }
             return _.uniq(filterAttributes);
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -4704,7 +4697,7 @@ export class StudyViewPageStore {
                 } as ClinicalDataCountFilter,
             });
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -4719,7 +4712,7 @@ export class StudyViewPageStore {
                 .uniqBy(attr => attr.attributeId)
                 .value();
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -4738,7 +4731,7 @@ export class StudyViewPageStore {
                 } as ClinicalDataBinCountFilter,
             });
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -4846,7 +4839,7 @@ export class StudyViewPageStore {
             }
             return Promise.resolve([]);
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -4913,7 +4906,7 @@ export class StudyViewPageStore {
             }
             return [];
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -4933,7 +4926,7 @@ export class StudyViewPageStore {
                 )
             );
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -5025,7 +5018,7 @@ export class StudyViewPageStore {
                 return Promise.resolve(this.samples.result);
             }
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -5044,7 +5037,7 @@ export class StudyViewPageStore {
             );
             return Promise.resolve({ sampleIdentifiers } as any);
         },
-        onError: error => {},
+        onError: () => {},
     });
 
     @observable private hasFilteredSamples(): boolean {
@@ -5074,7 +5067,7 @@ export class StudyViewPageStore {
                 )
             );
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -5124,7 +5117,7 @@ export class StudyViewPageStore {
             );
             return Object.keys(unselectedPatientSet);
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -5193,7 +5186,7 @@ export class StudyViewPageStore {
                 return [];
             }
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -5253,7 +5246,7 @@ export class StudyViewPageStore {
                 return [];
             }
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -5313,7 +5306,7 @@ export class StudyViewPageStore {
                 return [];
             }
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -5656,7 +5649,7 @@ export class StudyViewPageStore {
                         row.push(selectedPatient.studyId || Datalabel.NA);
                         row.push(selectedPatient.patientId || Datalabel.NA);
 
-                        _.each(uniqueClinicalAttributeIds, id => {
+                        _.each(uniqueClinicalAttributeIds, () => {
                             row.push(Datalabel.NA);
                         });
                     }
@@ -5828,7 +5821,7 @@ export class StudyViewPageStore {
                 return obj;
             });
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -5862,7 +5855,7 @@ export class StudyViewPageStore {
             }
             return {};
         },
-        onError: error => {},
+        onError: () => {},
         default: {},
     });
 
@@ -5925,7 +5918,7 @@ export class StudyViewPageStore {
                 };
             }
         },
-        onError: error => {},
+        onError: () => {},
         default: {
             bins: [],
             xBinSize: -1,
@@ -5957,13 +5950,13 @@ export class StudyViewPageStore {
                 clinicalDataMultiStudyFilter: filter,
             });
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
     readonly mutationCountVsFGAData = remoteData({
         await: () => [this.sampleMutationCountAndFractionGenomeAlteredData],
-        onError: error => {},
+        onError: () => {},
         invoke: async () => {
             return _.reduce(
                 _.groupBy(
@@ -6020,7 +6013,7 @@ export class StudyViewPageStore {
 
     readonly getDataForClinicalDataTab = remoteData({
         await: () => [this.clinicalAttributes, this.selectedSamples],
-        onError: error => {},
+        onError: () => {},
         invoke: async () => {
             if (this.selectedSamples.result.length === 0) {
                 return Promise.resolve([]);
@@ -6147,7 +6140,7 @@ export class StudyViewPageStore {
 
     readonly molecularProfileSampleCountSet = remoteData({
         await: () => [this.molecularProfileSampleCounts],
-        onError: error => {},
+        onError: () => {},
         invoke: async () => {
             return _.chain(this.molecularProfileSampleCounts.result || [])
                 .keyBy(
@@ -6201,7 +6194,7 @@ export class StudyViewPageStore {
 
     readonly clinicalAttributesCounts = remoteData({
         await: () => [this.selectedSamples],
-        onError: error => {},
+        onError: () => {},
         invoke: () => {
             if (this.selectedSamples.result.length === 0) {
                 return Promise.resolve([]);
@@ -6432,7 +6425,7 @@ export class StudyViewPageStore {
             }
             return {};
         },
-        onError: error => {},
+        onError: () => {},
         default: {},
     });
 
@@ -6671,7 +6664,7 @@ export class StudyViewPageStore {
                 )
             );
         },
-        onError: error => {},
+        onError: () => {},
         default: [],
     });
 
@@ -6816,7 +6809,7 @@ export class StudyViewPageStore {
                 })
             );
         },
-        onError: error => Promise.resolve([]),
+        onError: () => Promise.resolve([]),
         default: [],
     });
 
@@ -7055,7 +7048,7 @@ export class StudyViewPageStore {
 
     @autobind
     @action
-    public onSampleTreatmentSelection(meta: ChartMeta, values: string[][]) {
+    public onSampleTreatmentSelection(values: string[][]) {
         const filters = values.map(outerFilter => {
             return {
                 filters: outerFilter.map(innerFilter => {
@@ -7069,7 +7062,7 @@ export class StudyViewPageStore {
 
     @autobind
     @action
-    public onPatientTreatmentSelection(meta: ChartMeta, values: string[][]) {
+    public onPatientTreatmentSelection(values: string[][]) {
         const filters = values.map(outerFilter => {
             return {
                 filters: outerFilter.map(innerFilter => {

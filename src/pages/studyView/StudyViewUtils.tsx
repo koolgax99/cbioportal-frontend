@@ -1,6 +1,5 @@
 import _ from 'lodash';
 import { SingleGeneQuery } from 'shared/lib/oql/oql-parser';
-import { unparseOQLQueryLine } from 'shared/lib/oql/oqlfilter';
 import {
     ClinicalDataCount,
     SampleIdentifier,
@@ -48,7 +47,6 @@ import MobxPromise from 'mobxpromise';
 import {
     getTextWidth,
     stringListToIndexSet,
-    stringListToSet,
 } from 'cbioportal-frontend-commons';
 import {
     CNA_COLOR_AMP,
@@ -58,19 +56,11 @@ import {
 } from 'shared/lib/Colors';
 import { StudyViewComparisonGroup } from '../groupComparison/GroupComparisonUtils';
 import styles from './styles.module.scss';
-import {
-    getGroupParameters,
-    getStudiesAttr,
-} from 'pages/groupComparison/comparisonGroupManager/ComparisonGroupManagerUtils';
+import { getGroupParameters } from 'pages/groupComparison/comparisonGroupManager/ComparisonGroupManagerUtils';
 import { SessionGroupData } from 'shared/api/ComparisonGroupClient';
 import { IStudyViewScatterPlotData } from './charts/scatterPlot/StudyViewScatterPlotUtils';
 import { CNA_TO_ALTERATION } from 'pages/resultsView/enrichments/EnrichmentsUtil';
 import ComplexKeyMap from 'shared/lib/complexKeyDataStructures/ComplexKeyMap';
-import {
-    AlterationTypeConstants,
-    DataTypeConstants,
-} from 'pages/resultsView/ResultsViewPageStore';
-import { decideMolecularProfileSortingOrder } from 'pages/resultsView/download/DownloadUtils';
 import { Datalabel } from 'shared/lib/DataUtils';
 import { getSuffixOfMolecularProfile } from 'shared/lib/molecularProfileUtils';
 
@@ -2304,49 +2294,47 @@ export function getChartSettingsMap(
     visibleAttributes.forEach(attribute => {
         const id = attribute.uniqueKey;
         const chartType = chartTypeSet[id] || 'NONE';
-        chartSettingsMap[attribute.uniqueKey] = {
-            id: attribute.uniqueKey,
+        chartSettingsMap[id] = {
+            id: id,
             chartType,
             patientAttribute: attribute.patientAttribute, // add chart attribute type
         };
-        if (chartType === ChartTypeEnum.MUTATED_GENES_TABLE) {
-            chartSettingsMap[
-                attribute.uniqueKey
-            ].filterByCancerGenes = filterMutatedGenesTableByCancerGenes;
-        } else if (chartType === ChartTypeEnum.FUSION_GENES_TABLE) {
-            chartSettingsMap[
-                attribute.uniqueKey
-            ].filterByCancerGenes = filterFusionGenesTableByCancerGenes;
-        } else if (chartType === ChartTypeEnum.CNA_GENES_TABLE) {
-            chartSettingsMap[
-                attribute.uniqueKey
-            ].filterByCancerGenes = filterCNAGenesTableByCancerGenes;
-        } else if (chartType === ChartTypeEnum.BAR_CHART) {
-            chartSettingsMap[attribute.uniqueKey].showNA = isShowNAChecked!(
-                attribute.uniqueKey
-            );
+        const chartSetting = chartSettingsMap[id];
+
+        switch (chartType) {
+            case ChartTypeEnum.MUTATED_GENES_TABLE:
+                chartSetting.filterByCancerGenes = filterMutatedGenesTableByCancerGenes;
+                break;
+            case ChartTypeEnum.FUSION_GENES_TABLE:
+                chartSetting.filterByCancerGenes = filterFusionGenesTableByCancerGenes;
+                break;
+            case ChartTypeEnum.CNA_GENES_TABLE:
+                chartSetting.filterByCancerGenes = filterCNAGenesTableByCancerGenes;
+                break;
+            case ChartTypeEnum.BAR_CHART:
+                chartSetting.showNA = isShowNAChecked!(id);
+                break;
         }
 
         const customChart = customChartSet[id];
         if (customChart) {
             // if its custom chart add groups and name
-            chartSettingsMap[id].groups = customChart.groups;
-            chartSettingsMap[id].name = attribute.displayName;
+            chartSetting.groups = customChart.groups;
+            chartSetting.name = attribute.displayName;
         }
         const genomicChart = genomicChartSet[id];
         if (genomicChart) {
-            chartSettingsMap[id].name = genomicChart.name;
-            chartSettingsMap[id].description = genomicChart.description;
-            chartSettingsMap[id].hugoGeneSymbol = genomicChart.hugoGeneSymbol;
-            chartSettingsMap[id].profileType = genomicChart.profileType;
+            chartSetting.name = genomicChart.name;
+            chartSetting.description = genomicChart.description;
+            chartSetting.hugoGeneSymbol = genomicChart.hugoGeneSymbol;
+            chartSetting.profileType = genomicChart.profileType;
         }
         if (clinicalDataBinFilter[id]) {
             if (clinicalDataBinFilter[id].disableLogScale) {
-                chartSettingsMap[id].disableLogScale = true;
+                chartSetting.disableLogScale = true;
             }
             if (!_.isEmpty(clinicalDataBinFilter[id].customBins)) {
-                chartSettingsMap[id].customBins =
-                    clinicalDataBinFilter[id].customBins;
+                chartSetting.customBins = clinicalDataBinFilter[id].customBins;
             }
         }
     });
