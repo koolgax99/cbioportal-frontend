@@ -4,6 +4,7 @@ import {
     VictoryAxis,
     VictoryBar,
     VictoryChart,
+    VictoryLabel,
     VictorySelectionContainer,
 } from 'victory';
 import { computed, observable } from 'mobx';
@@ -36,6 +37,7 @@ export interface IBarChartProps {
     height: number;
     filters: DataFilterValue[];
     onUserSelection: (dataBins: ClinicalDataBin[]) => void;
+    showNAChecked: boolean;
 }
 
 export type BarDatum = {
@@ -255,7 +257,106 @@ export default class BarChart extends React.Component<IBarChartProps, {}>
         ];
     }
 
-    public render() {
+    renderWithoutNA = (): JSX.Element => {
+        const barDataWithNA = this.barData.filter(containsNA);
+        const barDataWithoutNA = this.barData.filter(doesNotContainNA);
+        const labelNA = barDataWithNA.reduce(collectCount, '');
+        const numberOfNA = barDataWithNA.length;
+        const tickValuesWithoutNA = this.tickValues.slice(0, -numberOfNA);
+        const maximumX =
+            tickValuesWithoutNA[tickValuesWithoutNA.length - 1] + 1;
+        const maximumY = Math.max(
+            ...barDataWithoutNA.map((element: BarDatum) => element.y)
+        );
+
+        return (
+            <div onMouseMove={this.onMouseMove}>
+                {this.barData.length > 0 && (
+                    <VictoryChart
+                        containerComponent={
+                            <VictorySelectionContainer
+                                containerRef={(ref: any) =>
+                                    (this.svgContainer = ref)
+                                }
+                                selectionDimension="x"
+                                onSelection={this.onSelection}
+                            />
+                        }
+                        style={{
+                            parent: {
+                                width: this.props.width,
+                                height: this.props.height,
+                            },
+                        }}
+                        height={this.props.height - this.bottomPadding}
+                        padding={{
+                            left: 40,
+                            right: 20,
+                            top: 10,
+                            bottom: this.bottomPadding,
+                        }}
+                        theme={VICTORY_THEME}
+                    >
+                        <VictoryAxis
+                            tickValues={tickValuesWithoutNA}
+                            tickFormat={(t: number) => this.tickFormat[t - 1]}
+                            domain={[0, maximumX]}
+                            tickLabelComponent={<BarChartAxisLabel />}
+                            style={{
+                                tickLabels: {
+                                    angle: TILT_ANGLE,
+                                    verticalAnchor: 'start',
+                                    textAnchor: 'start',
+                                },
+                            }}
+                        />
+                        <VictoryAxis
+                            dependentAxis={true}
+                            tickFormat={(t: number) =>
+                                Number.isInteger(t) ? t.toFixed(0) : ''
+                            }
+                        />
+                        <VictoryBar
+                            barRatio={this.barRatio}
+                            style={{
+                                data: {
+                                    fill: (d: BarDatum) =>
+                                        this.isDataBinSelected(
+                                            d.dataBin,
+                                            this.props.filters
+                                        ) || this.props.filters.length === 0
+                                            ? STUDY_VIEW_CONFIG.colors.theme
+                                                  .primary
+                                            : DEFAULT_NA_COLOR,
+                                },
+                            }}
+                            data={barDataWithoutNA}
+                            events={this.barPlotEvents}
+                        />
+                        {numberOfNA !== 0 && (
+                            <VictoryLabel
+                                text={`n/a: ${labelNA}`}
+                                textAnchor="end"
+                                datum={{ x: maximumX, y: maximumY }}
+                            />
+                        )}
+                    </VictoryChart>
+                )}
+                {ReactDOM.createPortal(
+                    <BarChartToolTip
+                        mousePosition={this.mousePosition}
+                        windowWidth={WindowStore.size.width}
+                        model={this.toolTipModel}
+                        totalBars={this.barData.length}
+                        currentBarIndex={this.currentBarIndex}
+                    />,
+                    document.body
+                )}
+            </div>
+        );
+    };
+
+    renderWithNA = (): JSX.Element => {
         return (
             <div onMouseMove={this.onMouseMove}>
                 {this.barData.length > 0 && (
@@ -337,5 +438,26 @@ export default class BarChart extends React.Component<IBarChartProps, {}>
                 )}
             </div>
         );
+    };
+
+    public render() {
+        return this.props.showNAChecked
+            ? this.renderWithNA()
+            : this.renderWithoutNA();
     }
 }
+
+const containsNA = (element: BarDatum): boolean => {
+    return element.dataBin.specialValue === 'NA';
+};
+const doesNotContainNA = (element: BarDatum): boolean => {
+    return !containsNA(element);
+};
+const collectCount = (
+    previousLabel: string,
+    currentElement: BarDatum
+): string => {
+    return !previousLabel
+        ? `${currentElement.dataBin.count}`
+        : `${previousLabel}, ${currentElement.dataBin.count}`;
+};

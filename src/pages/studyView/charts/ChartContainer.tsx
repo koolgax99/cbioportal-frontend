@@ -452,6 +452,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                         onUserSelection={this.handlers.onDataBinSelection}
                         filters={this.props.filters}
                         data={this.props.promise.result}
+                        showNAChecked={this.props.store.isShowNAChecked(
+                            this.props.chartMeta.uniqueKey
+                        )}
                     />
                 );
             }

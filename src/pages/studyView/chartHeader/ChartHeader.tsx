@@ -363,6 +363,40 @@ export class ChartHeader extends React.Component<IChartHeaderProps, {}> {
                     />
                 </li>
             );
+            items.push(
+                <div
+                    className={classnames(
+                        'dropdown-item',
+                        styles.dropdownHoverEffect
+                    )}
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        padding: '3px 20px',
+                    }}
+                >
+                    <form
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                        }}
+                    >
+                        <input
+                            onClick={this.props.store.toggleNAValue(
+                                this.props.chartMeta.uniqueKey
+                            )}
+                            checked={this.props.store.isShowNAChecked(
+                                this.props.chartMeta.uniqueKey
+                            )}
+                            type="checkbox"
+                            style={{ margin: '0 5px 0 0' }}
+                        />
+                        <label style={{ margin: '0', fontWeight: 'unset' }}>
+                            Show NA
+                        </label>
+                    </form>
+                </div>
+            );
         }
 
         if (

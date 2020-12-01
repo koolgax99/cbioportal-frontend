@@ -2288,7 +2288,8 @@ export function getChartSettingsMap(
     filterMutatedGenesTableByCancerGenes: boolean = true,
     filterFusionGenesTableByCancerGenes: boolean = true,
     filterCNAGenesTableByCancerGenes: boolean = true,
-    gridLayout?: ReactGridLayout.Layout[]
+    gridLayout?: ReactGridLayout.Layout[],
+    isShowNAChecked?: (uniqueKey: string) => boolean
 ) {
     if (!gridLayout) {
         gridLayout = calculateLayout(
@@ -2320,7 +2321,12 @@ export function getChartSettingsMap(
             chartSettingsMap[
                 attribute.uniqueKey
             ].filterByCancerGenes = filterCNAGenesTableByCancerGenes;
+        } else if (chartType === ChartTypeEnum.BAR_CHART) {
+            chartSettingsMap[attribute.uniqueKey].showNA = isShowNAChecked!(
+                attribute.uniqueKey
+            );
         }
+
         const customChart = customChartSet[id];
         if (customChart) {
             // if its custom chart add groups and name

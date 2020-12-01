@@ -225,6 +225,7 @@ export type ChartUserSetting = {
     description?: string;
     profileType?: string;
     hugoGeneSymbol?: string;
+    showNA?: boolean;
 };
 
 export type StudyPageSettings = {
@@ -324,6 +325,31 @@ export class StudyViewPageStore {
     public studyViewQueryFilter: StudyViewURLQuery;
 
     @observable showComparisonGroupUI = false;
+
+    @observable private _NAValueSet = observable.map<boolean>();
+
+    @action
+    public updateNAValue(uniqueKey: string): void {
+        let newValue = this.isShowNAChecked(uniqueKey);
+        this._NAValueSet.set(uniqueKey, newValue);
+    }
+
+    @action
+    toggleNAValue = (uniqueKey: string) => (): void => {
+        this.updateNAValue(uniqueKey);
+        let showNA = this._NAValueSet.get(uniqueKey)!;
+        this._NAValueSet.set(uniqueKey, !showNA);
+    };
+
+    public isShowNAChecked = (uniqueKey: string): boolean => {
+        let showNA = this._NAValueSet.get(uniqueKey);
+        // Show NA bars by default
+        if (showNA === undefined) {
+            return true;
+        } else {
+            return showNA as boolean;
+        }
+    };
 
     constructor(
         public appStore: AppStore,
@@ -4130,7 +4156,8 @@ export class StudyViewPageStore {
                 this._filterMutatedGenesTableByCancerGenes,
                 this._filterFusionGenesTableByCancerGenes,
                 this._filterCNAGenesTableByCancerGenes,
-                this.currentGridLayout
+                this.currentGridLayout,
+                this.isShowNAChecked
             );
         }
         return chartSettingsMap;
@@ -4322,6 +4349,10 @@ export class StudyViewPageStore {
                                 chartUserSettings.disableLogScale;
                         }
                     }
+                    this._NAValueSet.set(
+                        chartUserSettings.id,
+                        chartUserSettings.showNA
+                    );
                     break;
                 default:
                     break;
