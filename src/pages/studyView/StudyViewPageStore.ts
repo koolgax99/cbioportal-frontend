@@ -319,23 +319,26 @@ export class StudyViewPageStore {
 
     @observable showComparisonGroupUI = false;
 
-    @observable private _NAValueSet = observable.map<boolean>();
-
     @action
     public updateNAValue(uniqueKey: string): void {
         let newValue = this.isShowNAChecked(uniqueKey);
-        this._NAValueSet.set(uniqueKey, newValue);
+        let newFilter = _.clone(this._clinicalDataBinFilterSet.get(uniqueKey))!;
+        newFilter.showNA = newValue;
+        this._clinicalDataBinFilterSet.set(uniqueKey, newFilter);
     }
 
-    @action
     toggleNAValue = (uniqueKey: string) => (): void => {
         this.updateNAValue(uniqueKey);
-        let showNA = this._NAValueSet.get(uniqueKey)!;
-        this._NAValueSet.set(uniqueKey, !showNA);
+        let newFilter = _.clone(this._clinicalDataBinFilterSet.get(uniqueKey))!;
+        let showNA = newFilter.showNA;
+        newFilter.showNA = !showNA;
+        this._clinicalDataBinFilterSet.set(uniqueKey, newFilter);
     };
 
     public isShowNAChecked = (uniqueKey: string): boolean => {
-        let showNA = this._NAValueSet.get(uniqueKey);
+        let filter = _.clone(this._clinicalDataBinFilterSet.get(uniqueKey))!;
+        let showNA = filter.showNA;
+
         // Show NA bars by default
         if (showNA === undefined) {
             return true;
@@ -1289,7 +1292,7 @@ export class StudyViewPageStore {
     >();
 
     @observable private _clinicalDataBinFilterSet = observable.map<
-        ClinicalDataBinFilter
+        ClinicalDataBinFilter & { showNA?: boolean }
     >();
     @observable private _genomicDataBinFilterSet = observable.map<
         GenomicDataBinFilter
@@ -2310,7 +2313,9 @@ export class StudyViewPageStore {
             if (bins.length > 0) {
                 newFilter.customBins = bins;
             } else {
-                delete (newFilter as Partial<ClinicalDataBinFilter>).customBins;
+                delete (newFilter as Partial<
+                    ClinicalDataBinFilter & { showNA?: boolean }
+                >).customBins;
             }
             this._clinicalDataBinFilterSet.set(uniqueKey, newFilter);
         }
@@ -2612,7 +2617,7 @@ export class StudyViewPageStore {
                         studyViewFilter: this
                             .studyViewFilterWithFilteredSampleIdentifiers
                             .result!,
-                    } as ClinicalDataCountFilter,
+                    },
                 });
             }
             return Promise.resolve([]);
@@ -2672,7 +2677,7 @@ export class StudyViewPageStore {
                     clinicalDataBinCountFilter: {
                         attributes: this.newlyAddedUnfilteredAttrsForNumerical,
                         studyViewFilter: this.filters,
-                    } as ClinicalDataBinCountFilter,
+                    },
                 });
             }
             return Promise.resolve([]);
@@ -2699,7 +2704,7 @@ export class StudyViewPageStore {
                     clinicalDataBinCountFilter: {
                         attributes: this.unfilteredAttrsForNumerical,
                         studyViewFilter: this.filters,
-                    } as ClinicalDataBinCountFilter,
+                    },
                 });
             }
             return Promise.resolve([]);
@@ -2769,7 +2774,7 @@ export class StudyViewPageStore {
                                             } as ClinicalDataFilter,
                                         ],
                                         studyViewFilter: this.filters,
-                                    } as ClinicalDataCountFilter,
+                                    },
                                 }
                             );
                         } else if (!isDefaultAttr && !this.chartsAreFiltered) {
@@ -2897,6 +2902,8 @@ export class StudyViewPageStore {
                         )!
                     );
 
+                    delete attribute.showNA;
+
                     if (
                         this._customBinsFromScatterPlotSelectionSet.has(
                             chartMeta.uniqueKey
@@ -2938,7 +2945,7 @@ export class StudyViewPageStore {
                                     clinicalDataBinCountFilter: {
                                         attributes: [attribute],
                                         studyViewFilter: this.filters,
-                                    } as ClinicalDataBinCountFilter,
+                                    },
                                 }
                             );
                         } else if (!isDefaultAttr && !this.chartsAreFiltered) {
@@ -3432,7 +3439,8 @@ export class StudyViewPageStore {
         return {
             attributeId: attribute.clinicalAttributeId,
             disableLogScale: false,
-        } as ClinicalDataBinFilter;
+            showNA: true,
+        } as ClinicalDataBinFilter & { showNA?: boolean };
     }
 
     readonly resourceDefinitions = remoteData({
@@ -4149,8 +4157,7 @@ export class StudyViewPageStore {
                 this._filterMutatedGenesTableByCancerGenes,
                 this._filterFusionGenesTableByCancerGenes,
                 this._filterCNAGenesTableByCancerGenes,
-                this.currentGridLayout,
-                this.isShowNAChecked
+                this.currentGridLayout
             );
         }
         return chartSettingsMap;
@@ -4227,7 +4234,7 @@ export class StudyViewPageStore {
     @observable private _defaultChartsType = observable.map<ChartType>();
     @observable private _defaultVisibleChartIds: string[] = [];
     @observable private _defaultClinicalDataBinFilterSet = observable.map<
-        ClinicalDataBinFilter
+        ClinicalDataBinFilter & { showNA?: boolean }
     >();
 
     @autobind
@@ -4341,11 +4348,8 @@ export class StudyViewPageStore {
                             ref.disableLogScale =
                                 chartUserSettings.disableLogScale;
                         }
+                        ref.showNA = chartUserSettings.showNA;
                     }
-                    this._NAValueSet.set(
-                        chartUserSettings.id,
-                        chartUserSettings.showNA
-                    );
                     break;
                 default:
                     break;
@@ -4694,7 +4698,7 @@ export class StudyViewPageStore {
                 clinicalDataCountFilter: {
                     attributes,
                     studyViewFilter: this.initialFilters,
-                } as ClinicalDataCountFilter,
+                },
             });
         },
         onError: () => {},
@@ -4702,7 +4706,7 @@ export class StudyViewPageStore {
     });
 
     readonly initialVisibleAttributesClinicalDataBinAttributes = remoteData<
-        ClinicalDataBinFilter[]
+        (ClinicalDataBinFilter & { showNA?: boolean })[]
     >({
         await: () => [this.defaultVisibleAttributes],
         invoke: async () => {
@@ -4728,7 +4732,7 @@ export class StudyViewPageStore {
                         .initialVisibleAttributesClinicalDataBinAttributes
                         .result,
                     studyViewFilter: this.initialFilters,
-                } as ClinicalDataBinCountFilter,
+                },
             });
         },
         onError: () => {},

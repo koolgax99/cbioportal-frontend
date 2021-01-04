@@ -2274,12 +2274,13 @@ export function getChartSettingsMap(
     chartTypeSet: { [uniqueId: string]: ChartType },
     customChartSet: { [uniqueId: string]: CustomChart },
     genomicChartSet: { [id: string]: GenomicChart },
-    clinicalDataBinFilter: { [uniqueId: string]: ClinicalDataBinFilter },
+    clinicalDataBinFilterSet: {
+        [uniqueId: string]: ClinicalDataBinFilter & { showNA?: boolean };
+    },
     filterMutatedGenesTableByCancerGenes: boolean = true,
     filterFusionGenesTableByCancerGenes: boolean = true,
     filterCNAGenesTableByCancerGenes: boolean = true,
-    gridLayout?: ReactGridLayout.Layout[],
-    isShowNAChecked?: (uniqueKey: string) => boolean
+    gridLayout?: ReactGridLayout.Layout[]
 ) {
     if (!gridLayout) {
         gridLayout = calculateLayout(
@@ -2311,9 +2312,6 @@ export function getChartSettingsMap(
             case ChartTypeEnum.CNA_GENES_TABLE:
                 chartSetting.filterByCancerGenes = filterCNAGenesTableByCancerGenes;
                 break;
-            case ChartTypeEnum.BAR_CHART:
-                chartSetting.showNA = isShowNAChecked!(id);
-                break;
         }
 
         const customChart = customChartSet[id];
@@ -2329,12 +2327,16 @@ export function getChartSettingsMap(
             chartSetting.hugoGeneSymbol = genomicChart.hugoGeneSymbol;
             chartSetting.profileType = genomicChart.profileType;
         }
-        if (clinicalDataBinFilter[id]) {
-            if (clinicalDataBinFilter[id].disableLogScale) {
+        if (clinicalDataBinFilterSet[id]) {
+            if (clinicalDataBinFilterSet[id].disableLogScale) {
                 chartSetting.disableLogScale = true;
             }
-            if (!_.isEmpty(clinicalDataBinFilter[id].customBins)) {
-                chartSetting.customBins = clinicalDataBinFilter[id].customBins;
+            if (clinicalDataBinFilterSet[id].showNA !== undefined) {
+                chartSetting.showNA = clinicalDataBinFilterSet[id].showNA;
+            }
+            if (!_.isEmpty(clinicalDataBinFilterSet[id].customBins)) {
+                chartSetting.customBins =
+                    clinicalDataBinFilterSet[id].customBins;
             }
         }
     });
