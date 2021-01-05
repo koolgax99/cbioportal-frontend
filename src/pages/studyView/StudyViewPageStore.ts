@@ -2902,8 +2902,6 @@ export class StudyViewPageStore {
                         )!
                     );
 
-                    delete attribute.showNA;
-
                     if (
                         this._customBinsFromScatterPlotSelectionSet.has(
                             chartMeta.uniqueKey
