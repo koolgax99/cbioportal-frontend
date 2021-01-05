@@ -10,6 +10,7 @@ import {
     observable,
     reaction,
     toJS,
+    makeObservable,
 } from 'mobx';
 import {
     AndedPatientTreatmentFilters,
@@ -20,7 +21,6 @@ import {
     ClinicalAttributeCountFilter,
     ClinicalData,
     ClinicalDataBin,
-    ClinicalDataBinCountFilter,
     ClinicalDataBinFilter,
     ClinicalDataCount,
     ClinicalDataCountFilter,
@@ -200,6 +200,11 @@ import {
     CNA_HOMDEL_VALUE,
 } from 'pages/resultsView/enrichments/EnrichmentsUtil';
 
+type ChartUniqueKey = string;
+type ResourceId = string;
+type ComparisonGroupId = string;
+type AttributeId = string;
+
 export type ChartUserSetting = {
     id: string;
     name?: string;
@@ -352,6 +357,7 @@ export class StudyViewPageStore {
         private sessionServiceIsEnabled: boolean,
         private urlWrapper: StudyViewURLWrapper
     ) {
+        makeObservable(this);
         this.chartItemToColor = new Map();
         this.chartToUsedColors = new Map();
         this.reactionDisposers.push(
@@ -371,8 +377,8 @@ export class StudyViewPageStore {
                 () => [
                     this.visibleAttributes,
                     this.columns,
-                    this.chartsDimension.toJS(),
-                    this.chartsType.toJS(),
+                    _.fromPairs(this.chartsDimension.toJSON()),
+                    _.fromPairs(this.chartsType.toJSON()),
                 ],
                 () => {
                     this.updateLayout();
@@ -468,13 +474,12 @@ export class StudyViewPageStore {
         }
     }
 
-    private openResourceTabMap = observable.map<boolean>();
+    private openResourceTabMap = observable.map<ResourceId, boolean>();
     @autobind
     public isResourceTabOpen(resourceId: string) {
         return !!this.openResourceTabMap.get(resourceId);
     }
-    @autobind
-    @action
+    @action.bound
     public setResourceTabOpen(resourceId: string, open: boolean) {
         this.openResourceTabMap.set(resourceId, open);
     }
@@ -484,8 +489,7 @@ export class StudyViewPageStore {
     public get comparisonConfirmationModal() {
         return this._comparisonConfirmationModal;
     }
-    @autobind
-    @action
+    @action.bound
     public setComparisonConfirmationModal(
         getModal: (hideModal: () => void) => JSX.Element
     ) {
@@ -495,10 +499,14 @@ export class StudyViewPageStore {
     }
 
     // <comparison groups code>
-    private _selectedComparisonGroups = observable.shallowMap<boolean>();
-    private _comparisonGroupsMarkedForDeletion = observable.shallowMap<
+    private _selectedComparisonGroups = observable.map<
+        ComparisonGroupId,
         boolean
-    >();
+    >({}, { deep: false });
+    private _comparisonGroupsMarkedForDeletion = observable.map<
+        ComparisonGroupId,
+        boolean
+    >({}, { deep: false });
 
     @action public setComparisonGroupSelected(
         groupId: string,
@@ -671,9 +679,9 @@ export class StudyViewPageStore {
             }
 
             // group present in page session which are not saved to user account
-            const missingGroupIds = this._selectedComparisonGroups
-                .keys()
-                .filter(groupId => groupIdSet[groupId] === undefined);
+            const missingGroupIds = Array.from(
+                this._selectedComparisonGroups.keys()
+            ).filter(groupId => groupIdSet[groupId] === undefined);
 
             if (missingGroupIds.length > 0) {
                 const promises = [];
@@ -1263,9 +1271,10 @@ export class StudyViewPageStore {
 
     @observable studyIds: string[] = [];
 
-    private _clinicalDataFilterSet = observable.shallowMap<
+    private _clinicalDataFilterSet = observable.map<
+        AttributeId,
         ClinicalDataFilter
-    >();
+    >({}, { deep: false });
 
     @observable private _genomicProfilesFilter: string[][] = [];
     @observable private _caseListsFilter: string[][] = [];
@@ -1284,34 +1293,47 @@ export class StudyViewPageStore {
         this._caseListsFilter = p;
     }
 
-    private _customBinsFromScatterPlotSelectionSet = observable.shallowMap<
+    private _customBinsFromScatterPlotSelectionSet = observable.map<
+        ChartUniqueKey,
         number[]
-    >();
-    private _genomicDataIntervalFilterSet = observable.shallowMap<
+    >({}, { deep: false });
+    private _genomicDataIntervalFilterSet = observable.map<
+        ChartUniqueKey,
         GenomicDataFilter
-    >();
+    >({}, { deep: false });
 
     @observable private _clinicalDataBinFilterSet = observable.map<
+        ChartUniqueKey,
         ClinicalDataBinFilter & { showNA?: boolean }
     >();
     @observable private _genomicDataBinFilterSet = observable.map<
+        ChartUniqueKey,
         GenomicDataBinFilter
     >();
 
-    @observable.ref private _geneFilterSet = observable.map<string[][]>();
+    @observable.ref private _geneFilterSet = observable.map<
+        string,
+        string[][]
+    >();
 
     // TODO: make it computed
     // Currently the study view store does not have the full control of the promise.
     // ChartContainer should be modified, instead of accepting a promise, it should accept data and loading state.
-    @observable private _chartVisibility = observable.map<boolean>();
+    @observable private _chartVisibility = observable.map<
+        ChartUniqueKey,
+        boolean
+    >();
 
-    @observable geneQueryStr: string;
+    @observable.ref geneQueryStr: string;
 
     @observable public geneQueries: SingleGeneQuery[] = [];
 
-    @observable public chartsDimension = observable.map<ChartDimension>();
+    @observable public chartsDimension = observable.map<
+        ChartUniqueKey,
+        ChartDimension
+    >();
 
-    @observable public chartsType = observable.map<ChartType>();
+    @observable public chartsType = observable.map<ChartUniqueKey, ChartType>();
 
     private newlyAddedCharts = observable.array<string>();
 
@@ -1546,13 +1568,12 @@ export class StudyViewPageStore {
         );
     }
 
-    @autobind
-    @action
+    @action.bound
     private updateLayout() {
         this.currentGridLayout = calculateLayout(
             this.visibleAttributes,
             this.columns,
-            this.chartsDimension.toJS(),
+            _.fromPairs(this.chartsDimension.toJSON()),
             this.useCurrentGridLayout ? this.currentGridLayout : [],
             this.currentFocusedChartByUser,
             this.currentFocusedChartByUserDimension
@@ -1574,8 +1595,7 @@ export class StudyViewPageStore {
         };
     }
 
-    @autobind
-    @action
+    @action.bound
     updateCurrentGridLayout(newGridLayout: ReactGridLayout.Layout[]) {
         this.currentGridLayout = newGridLayout;
     }
@@ -1608,10 +1628,11 @@ export class StudyViewPageStore {
     } = {};
 
     private _chartSampleIdentifiersFilterSet = observable.map<
+        ChartUniqueKey,
         SampleIdentifier[]
     >();
 
-    public customChartFilterSet = observable.map<string[]>();
+    public customChartFilterSet = observable.map<ChartUniqueKey, string[]>();
 
     @observable numberOfSelectedSamplesInCustomSelection: number = 0;
     @observable _filterComparisonGroups: StudyViewComparisonGroup[] = [];
@@ -1620,19 +1641,16 @@ export class StudyViewPageStore {
     @observable private _filterFusionGenesTableByCancerGenes: boolean = true;
     @observable private _filterCNAGenesTableByCancerGenes: boolean = true;
 
-    @autobind
-    @action
+    @action.bound
     updateMutatedGenesTableByCancerGenesFilter(filtered: boolean) {
         this._filterMutatedGenesTableByCancerGenes = filtered;
     }
-    @autobind
-    @action
+    @action.bound
     updateFusionGenesTableByCancerGenesFilter(filtered: boolean) {
         this._filterFusionGenesTableByCancerGenes = filtered;
     }
 
-    @autobind
-    @action
+    @action.bound
     updateCNAGenesTableByCancerGenesFilter(filtered: boolean) {
         this._filterCNAGenesTableByCancerGenes = filtered;
     }
@@ -1676,22 +1694,30 @@ export class StudyViewPageStore {
     }
 
     //used in saving custom added charts
-    @observable private _customChartMap = observable.shallowMap<CustomChart>();
-    @observable private _customCharts = observable.shallowMap<ChartMeta>();
+    @observable private _customChartMap = observable.map<
+        ChartUniqueKey,
+        CustomChart
+    >({}, { deep: false });
+    @observable private _customCharts = observable.map<
+        ChartUniqueKey,
+        ChartMeta
+    >({}, { deep: false });
 
     //used in saving gene specific charts
-    @observable private _geneSpecificChartMap = observable.shallowMap<
+    @observable private _geneSpecificChartMap = observable.map<
+        ChartUniqueKey,
         GenomicChart
-    >();
-    @observable private _geneSpecificCharts = observable.shallowMap<
+    >({}, { deep: false });
+    @observable private _geneSpecificCharts = observable.map<
+        ChartUniqueKey,
         ChartMeta
-    >();
-    @observable private _customChartsSelectedCases = observable.shallowMap<
+    >({}, { deep: false });
+    @observable private _customChartsSelectedCases = observable.map<
+        ChartUniqueKey,
         CustomChartIdentifierWithValue[]
-    >();
+    >({}, { deep: false });
 
-    @autobind
-    @action
+    @action.bound
     onCheckGene(hugoGeneSymbol: string) {
         //only update geneQueryStr whenever a table gene is clicked.
         this.geneQueries = updateGeneQuery(this.geneQueries, hugoGeneSymbol);
@@ -1704,8 +1730,7 @@ export class StudyViewPageStore {
         return this.geneQueries.map(singleGeneQuery => singleGeneQuery.gene);
     }
 
-    @autobind
-    @action
+    @action.bound
     updateSelectedGenes(query: SingleGeneQuery[], queryStr: string) {
         this.geneQueries = query;
         this.geneQueryStr = queryStr;
@@ -1750,8 +1775,7 @@ export class StudyViewPageStore {
         );
     }
 
-    @autobind
-    @action
+    @action.bound
     clearAllFilters() {
         this._clinicalDataFilterSet.clear();
         this._geneFilterSet.clear();
@@ -1872,8 +1896,7 @@ export class StudyViewPageStore {
         this.updateClinicalDataFilterByValues(chartUniqueKey, values);
     }
 
-    @autobind
-    @action
+    @action.bound
     updateClinicalDataFilterByValues(
         chartUniqueKey: string,
         values: DataFilterValue[]
@@ -1897,8 +1920,7 @@ export class StudyViewPageStore {
         }
     }
 
-    @autobind
-    @action
+    @action.bound
     updateGenomicDataIntervalFilters(
         uniqueKey: string,
         dataBins: GenomicDataBin[]
@@ -1909,8 +1931,7 @@ export class StudyViewPageStore {
         this.updateGenomicDataIntervalFiltersByValues(uniqueKey, values);
     }
 
-    @autobind
-    @action
+    @action.bound
     updateScatterPlotFilterByValues(
         chartUniqueKey: string,
         bounds?: RectangleBounds
@@ -1971,8 +1992,7 @@ export class StudyViewPageStore {
         }
     }
 
-    @autobind
-    @action
+    @action.bound
     addGeneFilters(chartMeta: ChartMeta, hugoGeneSymbols: string[][]) {
         trackStudyViewFilterEvent('geneFilter', this);
         let geneFilters =
@@ -1982,8 +2002,7 @@ export class StudyViewPageStore {
         this._geneFilterSet.set(chartMeta.uniqueKey, geneFilters);
     }
 
-    @autobind
-    @action
+    @action.bound
     updateGenomicDataIntervalFiltersByValues(
         uniqueKey: string,
         values: DataFilterValue[]
@@ -2004,22 +2023,19 @@ export class StudyViewPageStore {
         }
     }
 
-    @autobind
-    @action
+    @action.bound
     addGenomicProfilesFilter(profiles: string[][]) {
         let genomicProfilesFilter = toJS(this.genomicProfilesFilter) || [];
         this.setGenomicProfilesFilter(genomicProfilesFilter.concat(profiles));
     }
 
-    @autobind
-    @action
+    @action.bound
     addCaseListsFilter(caseLists: string[][]) {
         let caseListsFilter = toJS(this.caseListsFilter) || [];
         this.setCaseListsFilter(caseListsFilter.concat(caseLists));
     }
 
-    @autobind
-    @action
+    @action.bound
     removeGeneFilter(chartUniqueKey: string, toBeRemoved: string) {
         let geneFilters = toJS(this._geneFilterSet.get(chartUniqueKey)) || [];
         geneFilters = _.reduce(
@@ -2040,14 +2056,12 @@ export class StudyViewPageStore {
         }
     }
 
-    @autobind
-    @action
+    @action.bound
     resetGeneFilter(chartUniqueKey: string) {
         this._geneFilterSet.delete(chartUniqueKey);
     }
 
-    @autobind
-    @action
+    @action.bound
     removeGenomicProfileFilter(toBeRemoved: string) {
         let genomicProfilesFilter = toJS(this.genomicProfilesFilter) || [];
         genomicProfilesFilter = _.reduce(
@@ -2066,8 +2080,7 @@ export class StudyViewPageStore {
         this.setGenomicProfilesFilter(genomicProfilesFilter);
     }
 
-    @autobind
-    @action
+    @action.bound
     removeCaseListsFilter(toBeRemoved: string) {
         let caseListsFilter = toJS(this.caseListsFilter) || [];
         caseListsFilter = _.reduce(
@@ -2086,8 +2099,7 @@ export class StudyViewPageStore {
         this.setGenomicProfilesFilter(caseListsFilter);
     }
 
-    @autobind
-    @action
+    @action.bound
     updateChartSampleIdentifierFilter(
         chartKey: string,
         cases: SampleIdentifier[],
@@ -2137,7 +2149,7 @@ export class StudyViewPageStore {
     }
 
     public newCustomChartUniqueKey(): string {
-        return `CUSTOM_FILTERS_${this._customCharts.keys().length}`;
+        return `CUSTOM_FILTERS_${this._customCharts.size}`;
     }
 
     public isCustomChart(uniqueKey: string): boolean {
@@ -2224,8 +2236,7 @@ export class StudyViewPageStore {
         this.changeChartVisibility(chartUniqueKey, visible);
     }
 
-    @autobind
-    @action
+    @action.bound
     removeComparisonGroupSelectionFilter() {
         this._chartSampleIdentifiersFilterSet.delete(
             SpecialChartsUniqueKeyEnum.SELECTED_COMPARISON_GROUPS
@@ -2233,8 +2244,7 @@ export class StudyViewPageStore {
         this._filterComparisonGroups = [];
     }
 
-    @autobind
-    @action
+    @action.bound
     removeCustomSelectFilter() {
         this._chartSampleIdentifiersFilterSet.delete(
             SpecialChartsUniqueKeyEnum.CUSTOM_SELECT
@@ -2297,8 +2307,7 @@ export class StudyViewPageStore {
         );
     }
 
-    @autobind
-    @action
+    @action.bound
     public updateCustomBins(uniqueKey: string, bins: number[]) {
         if (this.isGeneSpecificChart(uniqueKey)) {
             let newFilter = _.clone(
@@ -2359,7 +2368,7 @@ export class StudyViewPageStore {
 
     @action addCharts(visibleChartIds: string[]) {
         visibleChartIds.forEach(chartId => {
-            if (!this._chartVisibility.keys().includes(chartId)) {
+            if (!this._chartVisibility.has(chartId)) {
                 this.newlyAddedCharts.push(chartId);
             }
         });
@@ -2367,7 +2376,7 @@ export class StudyViewPageStore {
     }
 
     @action updateChartsVisibility(visibleChartIds: string[]) {
-        _.each(this._chartVisibility.keys(), chartId => {
+        for (const chartId of this._chartVisibility.keys()) {
             if (
                 !_.includes(visibleChartIds, chartId) ||
                 !this._chartVisibility.get(chartId)
@@ -2376,20 +2385,20 @@ export class StudyViewPageStore {
                 // because adding chart back would insert in middle instead of appending at last
                 this.changeChartVisibility(chartId, false);
             }
-        });
-        _.each(visibleChartIds, uniqueKey => {
+        }
+        for (const uniqueKey of visibleChartIds) {
             if (this._chartVisibility.get(uniqueKey) === undefined) {
                 this.changeChartVisibility(uniqueKey, true);
             }
-        });
+        }
     }
 
     @computed get clinicalDataFilters() {
-        return this._clinicalDataFilterSet.values();
+        return Array.from(this._clinicalDataFilterSet.values());
     }
 
     @computed get geneFilters(): GeneFilter[] {
-        return _.map(this._geneFilterSet.entries(), ([key, value]) => {
+        return _.map(this._geneFilterSet.toJSON(), ([key, value]) => {
             return {
                 molecularProfileIds: getMolecularProfileIdsFromUniqueKey(key),
                 geneQueries: value,
@@ -2398,7 +2407,7 @@ export class StudyViewPageStore {
     }
 
     @computed get genomicDataIntervalFilters() {
-        return this._genomicDataIntervalFilterSet.values();
+        return Array.from(this._genomicDataIntervalFilterSet.values());
     }
 
     @computed
@@ -2446,7 +2455,9 @@ export class StudyViewPageStore {
             filters.patientTreatmentFilters = { filters: [] };
         }
 
-        let sampleIdentifiersFilterSets = this._chartSampleIdentifiersFilterSet.values();
+        let sampleIdentifiersFilterSets = Array.from(
+            this._chartSampleIdentifiersFilterSet.values()
+        );
 
         // nested array need to be spread for _.intersectionWith
         let _sampleIdentifiers: SampleIdentifier[] = _.intersectionWith(
@@ -2472,7 +2483,7 @@ export class StudyViewPageStore {
     get userSelections() {
         let sampleIdentifiersSet: {
             [id: string]: SampleIdentifier[];
-        } = this._chartSampleIdentifiersFilterSet.toJS();
+        } = _.fromPairs(this._chartSampleIdentifiersFilterSet.toJSON());
         return { ...this.filters, sampleIdentifiersSet };
     }
 
@@ -2713,8 +2724,7 @@ export class StudyViewPageStore {
         default: [],
     });
 
-    @autobind
-    @action
+    @action.bound
     hideChart(uniqueKey: string) {
         this.changeChartVisibility(uniqueKey, false);
     }
@@ -3705,8 +3715,7 @@ export class StudyViewPageStore {
             1}`;
     }
 
-    @autobind
-    @action
+    @action.bound
     addCustomChart(
         newChart: CustomChart,
         uniqueKey: string = this.newCustomChartUniqueKey(),
@@ -3761,8 +3770,7 @@ export class StudyViewPageStore {
         }
     }
 
-    @autobind
-    @action
+    @action.bound
     addGeneSpecificCharts(
         newCharts: GenomicChart[],
         loadedfromUserSettings: boolean = false
@@ -3813,8 +3821,7 @@ export class StudyViewPageStore {
         });
     }
 
-    @autobind
-    @action
+    @action.bound
     updateCustomSelect(newChart: CustomChart) {
         this.clearAllFilters();
         const sampleIdentifiers = _.reduce(
@@ -3845,8 +3852,11 @@ export class StudyViewPageStore {
 
     @computed
     get chartMetaSet(): { [id: string]: ChartMeta } {
-        let _chartMetaSet = this._customCharts.toJS();
-        _chartMetaSet = _.merge(_chartMetaSet, this._geneSpecificCharts.toJS());
+        let _chartMetaSet = _.fromPairs(this._customCharts.toJSON());
+        _chartMetaSet = _.merge(
+            _chartMetaSet,
+            _.fromPairs(this._geneSpecificCharts.toJSON())
+        );
 
         // Add meta information for each of the clinical attribute
         // Convert to a Set for easy access and to update attribute meta information(would be useful while adding new features)
@@ -4047,7 +4057,7 @@ export class StudyViewPageStore {
     @computed
     get visibleAttributes(): ChartMeta[] {
         return _.reduce(
-            this._chartVisibility.entries(),
+            Array.from(this._chartVisibility.entries()),
             (acc, [chartUniqueKey, visible]) => {
                 if (visible && this.chartMetaSet[chartUniqueKey]) {
                     let chartMeta = this.chartMetaSet[chartUniqueKey];
@@ -4147,11 +4157,11 @@ export class StudyViewPageStore {
             chartSettingsMap = getChartSettingsMap(
                 this.visibleAttributes,
                 this.columns,
-                this.chartsDimension.toJS(),
-                this.chartsType.toJS(),
-                this._customChartMap.toJS(),
-                this._geneSpecificChartMap.toJS(),
-                this._clinicalDataBinFilterSet.toJS(),
+                _.fromPairs(this.chartsDimension.toJSON()),
+                _.fromPairs(this.chartsType.toJSON()),
+                _.fromPairs(this._customChartMap.toJSON()),
+                _.fromPairs(this._geneSpecificChartMap.toJSON()),
+                _.fromPairs(this._clinicalDataBinFilterSet.toJSON()),
                 this._filterMutatedGenesTableByCancerGenes,
                 this._filterFusionGenesTableByCancerGenes,
                 this._filterCNAGenesTableByCancerGenes,
@@ -4184,8 +4194,7 @@ export class StudyViewPageStore {
         },
     });
 
-    @autobind
-    @action
+    @action.bound
     private clearPageSettings() {
         this._chartVisibility.clear();
         this.currentGridLayout = [];
@@ -4199,8 +4208,7 @@ export class StudyViewPageStore {
         );
     }
 
-    @autobind
-    @action
+    @action.bound
     loadUserSettings() {
         if (
             this.isSavingUserPreferencePossible &&
@@ -4217,8 +4225,7 @@ export class StudyViewPageStore {
         }
     }
 
-    @autobind
-    @action
+    @action.bound
     public undoUserSettings() {
         this.loadSettings(_.values(this.previousSettings));
         this.previousSettings = {};
@@ -4227,16 +4234,20 @@ export class StudyViewPageStore {
     // had to create default variables for eachsince the default chart settings
     // depends on the number of columns (browser width)
     @observable private _defaultChartsDimension = observable.map<
+        ChartUniqueKey,
         ChartDimension
     >();
-    @observable private _defaultChartsType = observable.map<ChartType>();
+    @observable private _defaultChartsType = observable.map<
+        ChartUniqueKey,
+        ChartType
+    >();
     @observable private _defaultVisibleChartIds: string[] = [];
     @observable private _defaultClinicalDataBinFilterSet = observable.map<
+        ChartUniqueKey,
         ClinicalDataBinFilter & { showNA?: boolean }
     >();
 
-    @autobind
-    @action
+    @action.bound
     public resetToDefaultSettings() {
         this.clearPageSettings();
         this.loadSettings(_.values(this.defaultChartSettingsMap));
@@ -4257,16 +4268,15 @@ export class StudyViewPageStore {
                 chartUniqueKey => this.chartMetaSet[chartUniqueKey]
             ),
             this.columns,
-            this._defaultChartsDimension.toJS(),
-            this._defaultChartsType.toJS(),
+            _.fromPairs(this._defaultChartsDimension.toJSON()),
+            _.fromPairs(this._defaultChartsType.toJSON()),
             {},
             {},
-            this._defaultClinicalDataBinFilterSet.toJS()
+            _.fromPairs(this._defaultClinicalDataBinFilterSet.toJSON())
         );
     }
 
-    @autobind
-    @action
+    @action.bound
     private loadSettings(chartSettings: ChartUserSetting[]) {
         this.clearPageSettings();
         _.map(chartSettings, chartUserSettings => {
@@ -4362,8 +4372,7 @@ export class StudyViewPageStore {
         this.useCurrentGridLayout = true;
     }
 
-    @autobind
-    @action
+    @action.bound
     updateChartStats() {
         this.initializeChartStatsByClinicalAttributes();
 
@@ -4484,14 +4493,16 @@ export class StudyViewPageStore {
         this.initializeClinicalDataBinCountCharts();
         this.initializeGeneSpecificCharts();
         this._defaultChartsDimension = observable.map(
-            this.chartsDimension.toJS()
+            _.fromPairs(this.chartsDimension.toJSON())
         );
-        this._defaultChartsType = observable.map(this.chartsType.toJS());
+        this._defaultChartsType = observable.map(
+            _.fromPairs(this.chartsType.toJSON())
+        );
         this._defaultVisibleChartIds = this.visibleAttributes.map(
             attribute => attribute.uniqueKey
         );
         this._defaultClinicalDataBinFilterSet = observable.map(
-            toJS(this._clinicalDataBinFilterSet)
+            _.fromPairs(this._clinicalDataBinFilterSet.toJSON())
         );
     }
 
@@ -4600,8 +4611,7 @@ export class StudyViewPageStore {
               };
     }
 
-    @autobind
-    @action
+    @action.bound
     changeChartType(attr: ChartMeta, newChartType: ChartType) {
         let data: MobxPromise<ClinicalDataCountSummary[]> | undefined;
         if (newChartType === ChartTypeEnum.TABLE) {
@@ -6091,21 +6101,13 @@ export class StudyViewPageStore {
     >({
         await: () => [
             this.molecularProfiles,
-            this.initialMolecularProfileSampleCounts,
             this.sampleUniqueKeysByMolecularProfileIdSet,
-            this.selectedSamples,
         ],
         invoke: async () => {
-            let molecularProfileOptions: GenomicDataCountWithSampleUniqueKeys[] = [];
-            if (this.isInitialFilterState) {
-                molecularProfileOptions = this
-                    .initialMolecularProfileSampleCounts.result!;
-            } else {
-                molecularProfileOptions = getMolecularProfileOptions(
-                    this.molecularProfiles.result,
-                    this.sampleUniqueKeysByMolecularProfileIdSet.result!
-                );
-            }
+            const molecularProfileOptions: GenomicDataCountWithSampleUniqueKeys[] = getMolecularProfileOptions(
+                this.molecularProfiles.result,
+                this.sampleUniqueKeysByMolecularProfileIdSet.result!
+            );
 
             return molecularProfileOptions.map(molecularProfileOption => {
                 return {
@@ -6384,7 +6386,7 @@ export class StudyViewPageStore {
 
                 // Add all custom chart counts, and they should all get 100%
                 _.reduce(
-                    this._customCharts.keys(),
+                    Array.from(this._customCharts.keys()),
                     (acc, next) => {
                         acc[next] = this.selectedSamples.result.length;
                         return acc;
@@ -6401,7 +6403,7 @@ export class StudyViewPageStore {
                         .mapValues(datum => datum.count)
                         .value();
                     _.reduce(
-                        this._geneSpecificChartMap.keys(),
+                        Array.from(this._geneSpecificChartMap.keys()),
                         (acc, uniqueChartKey) => {
                             const genomicChart = this._geneSpecificChartMap.get(
                                 uniqueChartKey
@@ -6576,8 +6578,7 @@ export class StudyViewPageStore {
         submitToPage(url, formOps, '_blank');
     }
 
-    @autobind
-    @action
+    @action.bound
     setCustomChartFilters(chartUniqueKey: string, values: string[]) {
         if (values.length > 0) {
             switch (chartUniqueKey) {
@@ -6630,15 +6631,14 @@ export class StudyViewPageStore {
             }
             let selectedSamples = [];
             if (
-                _.includes(
-                    this._chartSampleIdentifiersFilterSet.keys(),
+                this._chartSampleIdentifiersFilterSet.has(
                     SpecialChartsUniqueKeyEnum.CANCER_STUDIES
                 )
             ) {
                 selectedSamples = await getSamplesByExcludingFiltersOnChart(
                     SpecialChartsUniqueKeyEnum.CANCER_STUDIES,
                     this.filters,
-                    this._chartSampleIdentifiersFilterSet.toJS(),
+                    _.fromPairs(this._chartSampleIdentifiersFilterSet.toJSON()),
                     this.queriedSampleIdentifiers.result,
                     this.queriedPhysicalStudyIds.result
                 );
@@ -6728,7 +6728,9 @@ export class StudyViewPageStore {
                                 selectedSamples = await getSamplesByExcludingFiltersOnChart(
                                     uniqueKey,
                                     this.filters,
-                                    this._chartSampleIdentifiersFilterSet.toJS(),
+                                    _.fromPairs(
+                                        this._chartSampleIdentifiersFilterSet.toJSON()
+                                    ),
                                     this.queriedSampleIdentifiers.result,
                                     this.queriedPhysicalStudyIds.result
                                 );
@@ -7048,8 +7050,7 @@ export class StudyViewPageStore {
         },
     });
 
-    @autobind
-    @action
+    @action.bound
     public onSampleTreatmentSelection(values: string[][]) {
         const filters = values.map(outerFilter => {
             return {
@@ -7062,8 +7063,7 @@ export class StudyViewPageStore {
         this.addSampleTreatmentFilters(filters);
     }
 
-    @autobind
-    @action
+    @action.bound
     public onPatientTreatmentSelection(values: string[][]) {
         const filters = values.map(outerFilter => {
             return {
@@ -7076,8 +7076,7 @@ export class StudyViewPageStore {
         this.addPatientTreatmentFilters(filters);
     }
 
-    @autobind
-    @action
+    @action.bound
     public removeSampleTreatmentsFilter(andedIndex: number, oredIndex: number) {
         const updatedFilters = this.sampleTreatmentFilters.filters
             .map((oFil, oInd) => {
@@ -7092,8 +7091,7 @@ export class StudyViewPageStore {
         this.setSampleTreatmentFilters({ filters: updatedFilters });
     }
 
-    @autobind
-    @action
+    @action.bound
     public removePatientTreatmentsFilter(
         andedIndex: number,
         oredIndex: number

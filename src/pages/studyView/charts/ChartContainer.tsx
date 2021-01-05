@@ -1,7 +1,7 @@
 import * as React from 'react';
 import styles from './styles.module.scss';
 import { observer } from 'mobx-react';
-import { action, computed, observable } from 'mobx';
+import { action, computed, observable, makeObservable } from 'mobx';
 import _ from 'lodash';
 import {
     ChartControls,
@@ -147,6 +147,8 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
     constructor(props: IChartContainerProps) {
         super(props);
 
+        makeObservable(this);
+
         this.chartType = this.props.chartType;
 
         this.handlers = {
@@ -207,6 +209,8 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                 this.props.onDeleteChart(this.props.chartMeta);
             },
         };
+
+        makeObservable(this);
     }
 
     public toSVGDOMNode(): SVGElement {
@@ -250,8 +254,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
         } as ChartControls;
     }
 
-    @autobind
-    @action
+    @action.bound
     changeChartType(chartType: ChartType) {
         this.chartType = chartType;
         this.handlers.onChangeChartType(chartType);
@@ -266,8 +269,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
         );
     }
 
-    @autobind
-    @action
+    @action.bound
     openComparisonPage(params?: {
         // for numerical clinical attributes
         categorizationType?: NumericalGroupComparisonType;
